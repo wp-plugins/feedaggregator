@@ -3,7 +3,7 @@
 Plugin Name: feedgator
 Plugin URI: http://www.brownlowdown.net/webdev/feedaggregator
 Description: Feed Gator merges a group of RSS feeds into a single widgetized list.
-Version: 1.0
+Version: 1.0.1
 Author: Tyler Crawford
 Author URI: http://www.brownlowdown.net/
 License: This program is free software: you can redistribute it and/or modify
@@ -100,6 +100,11 @@ function feedgator_get_rss_items( $rss_arr=array() ){
 	// fetch all the feeds
 	$feed_arr = array();
 	foreach( $rss_arr as $i => $url ){
+
+		// make sure the feed url will work - added 1.1
+		$url = str_replace( array("feed://","feed:"), array("http://",""), $url ); // Magpie does not accept "feed://" URI
+		if( strpos( $url, "http://" ) !== 0 ) $url = "http://".$url;
+
 		$rss = fetch_rss( trim($url) );
 		if( $rss ) $feed_arr[] = $rss;
 	}
@@ -174,6 +179,7 @@ class feedgator {
 		'feedgator_display_method' => 'latestentries',
 		'feedgator_display_author' => '',
 		'feedgator_display_date' => 'display_date',
+		'feedgator_display_target_new' => '',
 	);
     if ( ! get_option('feedgator')){
       add_option('feedgator' , $data);
@@ -203,6 +209,8 @@ class feedgator {
       <p><label style="font-size:10px;"><input type="checkbox" name="feedgator_display_author" value="display_author" <?php if($data['feedgator_display_author']) { ?>checked="checked"<?php } ?> style="margin-right:10px;" />Display author</label></p>
       <p><label style="font-size:10px;"><input type="checkbox" name="feedgator_display_date" value="display_date" <?php if($data['feedgator_display_date']) { ?>checked="checked"<?php } ?> style="margin-right:10px;" />Display date</label></p>
 </label></p>
+	<p><label style="font-size:10px;"><input type="checkbox" name="feedgator_display_target_new" value="display_target_new" <?php if($data['feedgator_display_target_new']) { ?>checked="checked"<?php } ?> style="margin-right:10px;" />Open in new window</label></p>
+</label></p>
 	<?php
 	if (isset($_POST['feedgator_numitems'])){
 		$data['feedgator_widgettitle'] = $_POST['feedgator_widgettitle'];
@@ -212,6 +220,7 @@ class feedgator {
 		$data['feedgator_no_title_text'] = $_POST['feedgator_no_title_text'];
 		$data['feedgator_display_author'] = $_POST['feedgator_display_author'];
 		$data['feedgator_display_date'] = $_POST['feedgator_display_date'];
+		$data['feedgator_display_target_new'] = $_POST['feedgator_display_target_new'];
 		update_option('feedgator', $data);
 	}
   }
@@ -227,6 +236,9 @@ class feedgator {
 		echo $args['after_widget'];
 		return;
 	}
+	
+	// mark the target - if "Open in new window" is selected.
+	$a_target = ( $data['feedgator_display_target_new'] ) ? " target='_new'" : '';
 
 	// LATEST FROM EACH FEED
 	if( $data['feedgator_display_method'] == 'latestfromeachfeed' ) {
@@ -238,7 +250,7 @@ class feedgator {
 			foreach( $items as $j => $item ) {
 				if( $count++ >= $data['feedgator_numitems'] ) continue;
 				if( !$item->title ) $item->title = $data['feedgator_no_title_text'];
-				echo "<li class='".$item->class."'><strong><a href='".$item->link."' rel='".$url."' title='".$item->author."'>".$item->title."</a></strong>";
+				echo "<li class='".$item->class."'><strong><a href='".$item->link."' rel='".$url."' title='".$item->author."'$a_target>".$item->title."</a></strong>";
 				if( $data['feedgator_display_author'] ) echo "<span class='meta feedgator-author'>".$item->author."</span>";
 				if( $data['feedgator_display_date'] ) echo "<span class='meta feedgator-date'>".$item->date."</span>";
 				echo "</li>";
@@ -256,7 +268,7 @@ class feedgator {
 		foreach( $items as $i => $item ){
 			if( $count++ == $data['feedgator_numitems'] ) break;
 			if( !$item->title ) $item->title = $data['feedgator_no_title_text'];
-			echo "<li class='".$item->class."'><strong><a href='".$item->link."' rel='".$url."' title='".$item->author."'>".$item->title."</a></strong>";
+			echo "<li class='".$item->class."'><strong><a href='".$item->link."' title='".$item->author."'$a_target>".$item->title."</a></strong>";
 			if( $data['feedgator_display_author'] ) echo "<span class='meta feedgator-author'>".$item->author."</span>";
 			if( $data['feedgator_display_date'] ) echo "<span class='meta feedgator-date'>".$item->date."</span>";
 			echo "</li>";

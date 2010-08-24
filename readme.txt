@@ -2,9 +2,9 @@
 Contributors: imacfuzzy
 Donate link: http://www.brownlowdown.net/webdev/feedaggregator
 Tags: rss,atom,feed,list,group,arrange,aggregate,widget
-Requires at least: 3.0
+Requires at least: 2.7.1
 Tested up to: 3.0.1
-Stable tag: 1.0
+Stable tag: 1.0.1
 
 Feed(Aggre)gator merges a group of RSS feeds into a single widgetized list.
 
@@ -34,14 +34,22 @@ See website for screenshots.
 
 == Donate ==
 
-If you like the plugin, consider supporting the author: http://www.brownlowdown.net/webdev/feedaggregator#donate.
+If you like the plugin, consider supporting the author through http://www.brownlowdown.net/webdev/feedaggregator/#donate.
 
 == Changelog ==
+
+= 1.0.1 =
+* accepts "feed:" syntax in RSS address
+* option to open links in a new window
+* removed unused "rel" attribute in link when listing by latest entries
 
 = 1.0 =
 * Original release.
 
 == Upgrade Notice ==
+
+= 1.0.1 =
+New features: presents an option to open link in a new window; accepts "feed:" syntax in RSS address.
 
 = 1.0 =
 Original release.
