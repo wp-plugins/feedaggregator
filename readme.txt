@@ -38,6 +38,11 @@ If you like the plugin, consider supporting the author through http://www.brownl
 
 == Changelog ==
 
+= 1.0.2 =
+* option to display excerpt from item
+* option to display source title/link
+* option to insert "display:block" style into each meta attribute, creating a list-style display
+
 = 1.0.1 =
 * accepts "feed:" syntax in RSS address
 * option to open links in a new window
@@ -48,8 +53,11 @@ If you like the plugin, consider supporting the author through http://www.brownl
 
 == Upgrade Notice ==
 
+= 1.0.2 =
+New features: options to display excerpts and source title/link and display meta attributes in list-style. If you have filled in any values in $feedgator_item_author_arr or $feedgator_item_class_arr in feed-gator.php, be sure to copy them before upgrading.
+
 = 1.0.1 =
-New features: presents an option to open link in a new window; accepts "feed:" syntax in RSS address.
+New features: presents an option to open link in a new window; accepts "feed:" syntax in rss address.
 
 = 1.0 =
 Original release.

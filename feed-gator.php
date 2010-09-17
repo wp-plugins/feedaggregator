@@ -1,9 +1,9 @@
 <?php
 /*
-Plugin Name: feedgator
+Plugin Name: feedgator test
 Plugin URI: http://www.brownlowdown.net/webdev/feedaggregator
-Description: Feed Gator merges a group of RSS feeds into a single widgetized list.
-Version: 1.0.1
+Description: Feed Gator merges a group of RSS feeds into a single widgetized list. Please <a href="http://www.brownlowdown.net/webdev/feedaggregator/#donate">donate</a> and keep the love alive!
+Version: 1.0.2
 Author: Tyler Crawford
 Author URI: http://www.brownlowdown.net/
 License: This program is free software: you can redistribute it and/or modify
@@ -101,21 +101,26 @@ function feedgator_get_rss_items( $rss_arr=array() ){
 	$feed_arr = array();
 	foreach( $rss_arr as $i => $url ){
 
+		// we shouldn't handle an empty url
+		if( !$url ) continue;
+
 		// make sure the feed url will work - added 1.1
 		$url = str_replace( array("feed://","feed:"), array("http://",""), $url ); // Magpie does not accept "feed://" URI
 		if( strpos( $url, "http://" ) !== 0 ) $url = "http://".$url;
 
 		$rss = fetch_rss( trim($url) );
 		if( $rss ) $feed_arr[] = $rss;
+		
 	}
 	// flatten the items into one array
 	foreach( $feed_arr as $i => $rss ){
 		foreach ($rss->items as $item) {
+			$item["channel"] = $rss->channel; // contains feed meta data
 			$item_arr[] = new MagpieRSSItem($item);
 		}
 	}
 	// now arrange the items according to timestamp
-	usort( $item_arr, "feedgator_item_compare_by_date" );
+	if( count($item_arr) ) usort( $item_arr, "feedgator_item_compare_by_date" );
 	// and return the array
 	return $item_arr;
 }
@@ -126,7 +131,7 @@ function feedgator_get_rss_items( $rss_arr=array() ){
  *
  */
 class MagpieRSSItem {
-  var $title, $link, $date, $author, $timestamp, $class;
+  var $title, $link, $date, $author, $timestamp, $class, $source_link, $source_title;
   function MagpieRSSItem( $arr ) {
     foreach( $arr as $key => $value ) {
 	  switch( $key ) {
@@ -163,9 +168,40 @@ class MagpieRSSItem {
 			$this->timestamp = strtotime($value);
 			$this->date = date("l, M j, Y", strtotime($value));
 			break;
+		case 'channel':
+			foreach( $value as $sub => $subitem ) {
+				switch( $sub ) {
+					case 'link':
+						$this->source_link = $subitem;
+						break;
+					case 'title':
+						$this->source_title = $subitem;
+						break;
+				}
+			}
+			break;			
       }
 	}
   }
+}
+
+
+function feedgator_li( $data, $item ) {
+
+	// if link should open in new window
+	$a_target = ( $data['feedgator_display_target_new'] ) ? " target='_new'" : '';
+
+	// if meta items should be displayed on separate lines
+	$style_block = ( $data['feedgator_display_meta_block'] ) ? ' style="display:block;"' : '';
+
+	// print the item	
+	$s = "<li class='".$item->class."'><strong><a href='".$item->link."' title='".$item->author."'$a_target>".$item->title."</a></strong>";
+	if( $data['feedgator_display_excerpt'] ) $s .= "<span class='meta feedgator-excerpt'$style_block>".$item->description."</span>";
+	if( $data['feedgator_display_author'] ) $s .= "<span class='meta feedgator-author'$style_block>".$item->author."</span>";
+	if( $data['feedgator_display_source_title'] ) $s .= "<span class='meta feedgator-title'$style_block><a href='".$item->source_link."'$a_target>".$item->source_title."</a></span>";
+	if( $data['feedgator_display_date'] ) $s .= "<span class='meta feedgator-date'$style_block>".$item->date."</span>";
+	$s .= "</li>";
+	return $s;
 }
 
 
@@ -177,9 +213,12 @@ class feedgator {
 		'feedgator_rss_feeds' => '',
 		'feedgator_no_title_text' => 'No Title',
 		'feedgator_display_method' => 'latestentries',
+		'feedgator_display_excerpt' => '',
 		'feedgator_display_author' => '',
+		'feedgator_display_source_title' => '',
 		'feedgator_display_date' => 'display_date',
 		'feedgator_display_target_new' => '',
+		'feedgator_display_meta_block' => '',
 	);
     if ( ! get_option('feedgator')){
       add_option('feedgator' , $data);
@@ -190,7 +229,7 @@ class feedgator {
   function deactivate(){
     delete_option('feedgator');
   }
-  function control(){  
+  function control(){
   	// make sure that this version of WP supports feed-gator
 	if( !feedgator_check_wp_magpie() ) {
 		echo FEEDGATOR_ERROR_MESSAGE;
@@ -206,10 +245,13 @@ class feedgator {
       <p><label>RSS feeds (on separate lines):<br /><textarea style="width:100%; font-size:10px; color:#555;" name="feedgator_rss_feeds"><?php echo str_replace(",","\n",$data['feedgator_rss_feeds']); ?></textarea></label></p>
       <p><label>Display method:<br /><select style="font-size:10px; width:100%;" name="feedgator_display_method"><option value="latestentries" <?php if($data['feedgator_display_method'] == 'latestentries') echo 'selected="selected"' ?>>by latest entry </option><option value="latestfromeachfeed" <?php if($data['feedgator_display_method'] == 'latestfromeachfeed') echo 'selected="selected"' ?>>latest from each feed </option></select></label></p>
       <p><label style="font-size:10px;">Text to display on no title:<br /><input style="font-size:10px; width:100%;" name="feedgator_no_title_text" type="text" value="<?php echo $data['feedgator_no_title_text']; ?>" /></label></p>
+      <p><label style="font-size:10px;"><input type="checkbox" name="feedgator_display_excerpt" value="display_excerpt" <?php if($data['feedgator_display_excerpt']) { ?>checked="checked"<?php } ?> style="margin-right:10px;" />Display excerpt</label></p>
       <p><label style="font-size:10px;"><input type="checkbox" name="feedgator_display_author" value="display_author" <?php if($data['feedgator_display_author']) { ?>checked="checked"<?php } ?> style="margin-right:10px;" />Display author</label></p>
       <p><label style="font-size:10px;"><input type="checkbox" name="feedgator_display_date" value="display_date" <?php if($data['feedgator_display_date']) { ?>checked="checked"<?php } ?> style="margin-right:10px;" />Display date</label></p>
+	  <p><label style="font-size:10px;"><input type="checkbox" name="feedgator_display_source_title" value="display_source_title" <?php if($data['feedgator_display_source_title']) { ?>checked="checked"<?php } ?> style="margin-right:10px;" />Display source title</label></p>
+	  <p><label style="font-size:10px;"><input type="checkbox" name="feedgator_display_target_new" value="display_target_new" <?php if($data['feedgator_display_target_new']) { ?>checked="checked"<?php } ?> style="margin-right:10px;" />Open in new window</label></p>
 </label></p>
-	<p><label style="font-size:10px;"><input type="checkbox" name="feedgator_display_target_new" value="display_target_new" <?php if($data['feedgator_display_target_new']) { ?>checked="checked"<?php } ?> style="margin-right:10px;" />Open in new window</label></p>
+	  <p><label style="font-size:10px;"><input type="checkbox" name="feedgator_display_meta_block" value="display_meta_block" <?php if($data['feedgator_display_meta_block']) { ?>checked="checked"<?php } ?> style="margin-right:10px;" />Use block display</label></p>
 </label></p>
 	<?php
 	if (isset($_POST['feedgator_numitems'])){
@@ -218,9 +260,12 @@ class feedgator {
 		$data['feedgator_display_method'] = $_POST['feedgator_display_method'];
 		$data['feedgator_rss_feeds'] = str_replace(array("\n","&"),array(",","&amp;"),trim($_POST['feedgator_rss_feeds']));
 		$data['feedgator_no_title_text'] = $_POST['feedgator_no_title_text'];
+		$data['feedgator_display_excerpt'] = $_POST['feedgator_display_excerpt'];
 		$data['feedgator_display_author'] = $_POST['feedgator_display_author'];
+		$data['feedgator_display_source_title'] = $_POST['feedgator_display_source_title'];
 		$data['feedgator_display_date'] = $_POST['feedgator_display_date'];
 		$data['feedgator_display_target_new'] = $_POST['feedgator_display_target_new'];
+		$data['feedgator_display_meta_block'] = $_POST['feedgator_display_meta_block'];
 		update_option('feedgator', $data);
 	}
   }
@@ -236,9 +281,7 @@ class feedgator {
 		echo $args['after_widget'];
 		return;
 	}
-	
-	// mark the target - if "Open in new window" is selected.
-	$a_target = ( $data['feedgator_display_target_new'] ) ? " target='_new'" : '';
+
 
 	// LATEST FROM EACH FEED
 	if( $data['feedgator_display_method'] == 'latestfromeachfeed' ) {
@@ -249,11 +292,7 @@ class feedgator {
 			$count = 0;
 			foreach( $items as $j => $item ) {
 				if( $count++ >= $data['feedgator_numitems'] ) continue;
-				if( !$item->title ) $item->title = $data['feedgator_no_title_text'];
-				echo "<li class='".$item->class."'><strong><a href='".$item->link."' rel='".$url."' title='".$item->author."'$a_target>".$item->title."</a></strong>";
-				if( $data['feedgator_display_author'] ) echo "<span class='meta feedgator-author'>".$item->author."</span>";
-				if( $data['feedgator_display_date'] ) echo "<span class='meta feedgator-date'>".$item->date."</span>";
-				echo "</li>";
+				echo feedgator_li( $data, $item );
 			}
 		}
 		echo "</ul>";
@@ -265,13 +304,9 @@ class feedgator {
 		$items = feedgator_get_rss_items( split(",",str_replace("&amp;","&",$data['feedgator_rss_feeds'])) );
 		echo "<ul>";
 		$count = 0;
-		foreach( $items as $i => $item ){
+		if( count($items ) ) foreach( $items as $i => $item ){
 			if( $count++ == $data['feedgator_numitems'] ) break;
-			if( !$item->title ) $item->title = $data['feedgator_no_title_text'];
-			echo "<li class='".$item->class."'><strong><a href='".$item->link."' title='".$item->author."'$a_target>".$item->title."</a></strong>";
-			if( $data['feedgator_display_author'] ) echo "<span class='meta feedgator-author'>".$item->author."</span>";
-			if( $data['feedgator_display_date'] ) echo "<span class='meta feedgator-date'>".$item->date."</span>";
-			echo "</li>";
+			echo feedgator_li( $data, $item );
 		}
 	
 		echo "</ul>";
